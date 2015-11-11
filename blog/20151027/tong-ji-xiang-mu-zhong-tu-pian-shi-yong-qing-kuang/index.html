@@ -1,0 +1,400 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!-->
+<html class="no-js" lang="zh-CN"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>统计项目中图片使用情况 - Adorkable Dean</title>
+  <meta name="author" content="Adorkable Dean">
+  <!--[if lt IE 9]>
+    <script src="http://x.papaapp.com/farm1/a571d2/8dda131d/html5shiv.js"></script>
+    <![endif]-->
+  
+  <meta name="description" content="统计项目中图片使用情况 | 查看评论 统计项目中图片使用情况 随着项目开发推进和版本迭代，项目中总会存在一些无效的图片资源，这些无效图片往往会增加编译成本和包的大小。 一个普通的iOS工程会有大约三分之一的图片是未使用的。 常用的方法有： 1，利用工具； 2，利用脚本； 3， &hellip;">
+  
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://adorkabledean.github.io/blog/20151027/tong-ji-xiang-mu-zhong-tu-pian-shi-yong-qing-kuang/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script type="text/javascript" src="http://t.papaapp.com/js/libs/jquery/1.7.2/jquery.js"></script>
+  <link href="/atom.xml" rel="alternate" title="Adorkable Dean" type="application/atom+xml">
+
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+
+  
+
+</head>
+<body   >
+  <header id="header" class="clearfix">    <div class="container">
+        <div class="col-group">
+            <div class="site-name ">
+                <a id="logo" href="/">
+                   Adorkable Dean
+                </a>
+                <p class="description">呆萌院长的涅槃重生</p>
+            </div>
+            <div>
+                <nav id="nav-menu" class="clearfix">
+                    <a class="index-nav current" href="/">文章</a>
+<a class="archives-nav" href="/blog/archives">归档</a>
+                </nav>
+            </div>
+        </div>
+    </div>
+</header>
+  <div id="body">
+    <div class="container">
+    	<div class="col-group">
+			<div class="col-8" id="main">
+  <div class="res-cons">
+  <article class="post clearfix">
+  
+  <header>
+    
+      <h1 class="post-title">统计项目中图片使用情况</h1>
+    
+    
+      <p class="post-meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-10-27T16:32:49+08:00" pubdate data-updated="true"></time>
+        
+         | <a href="#disqus_thread">查看评论</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="post-content"><h1>统计项目中图片使用情况</h1>
+
+<p>随着项目开发推进和版本迭代，项目中总会存在一些无效的图片资源，这些无效图片往往会增加编译成本和包的大小。</p>
+
+<blockquote><p>一个普通的iOS工程会有大约三分之一的图片是未使用的。</p></blockquote>
+
+<p>常用的方法有：</p>
+
+<p>1，利用工具；</p>
+
+<p>2，利用脚本；</p>
+
+<p>3，添加图片时候写图片名称的代码；</p>
+
+<p>脚本&amp;工具的原理大概是这样，在工程中搜图片名称，如果没有使用这个图片名称的话，则认为这张图片没有被使用并列举出来。这种做法不太精准：</p>
+
+<p>1，遇到用imageview做动画（即imageView.animationImages）时候，一般开发人员都会喜欢用for循环加入所有图片，这样就会导致已使用图片被列举出来；</p>
+
+<p>2，使用不同资源包时候，如果两个资源包有相同名称，但是有个资源包中的图片没被使用，这样就会导致未被使用的没列举出来；</p>
+
+<p>诸如此类情况有很多。有人会说用第三种方法，但是手动添加这样比较费时，即下面这种场景：</p>
+
+<blockquote><p>例如，我们想跟踪在程序中每一个view controller展示给用户的次数：当然，我们可以在每个view controller的viewDidAppear中添加跟踪代码；但是这太过麻烦，需要在每个view controller中写重复的代码。创建一个子类可能是一种实现方式，但需要同时创建UIViewController, UITableViewController, UINavigationController及其它UIKit中view controller的子类，这同样会产生许多重复的代码。</p></blockquote>
+
+<p>上面一段是<a href="http://nshipster.com/method-swizzling/"><code>Method Swizzling</code></a>中开篇的描述，确实人工手动添加难免会有漏掉，那么就要用苹果自带的方法集中处理。</p>
+
+<p>我们可以通过<code>Method Swizzling</code>修改<code>UIImage</code>的调用方法，在<code>UIImage</code>中添加打印使用图片(或者路径)的方法，然后写到一个文件里，在项目结束时候将没有出现在文件中的图片删除即可（可以采用脚本删除，便捷准确）。</p>
+
+<p>这种情况下，我们就可以写出如下<code>Method Swizzling</code>，如在代码所示：</p>
+
+<pre>
+<code>
+#import "ADeanImage+Hook.h"
+#import <objc/objc.h>
+#import <objc/runtime.h>
+
+@implementation UIImage (Hook)
+
++ (void)initialize
+{
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        [self adeanImageHook];
+    });
+}
+
++ (void)adeanImageHook
+{
+    [self imageNameHook];
+}
+
++ (void)imageNameHook  // 类方法调用方式
+{
+    Class class = object_getClass((id)self);
+    SEL originalSelector = @selector(imageNamed:);
+    SEL swizzledSelector = @selector(adean_imageNamed:);
+
+    Method originalMethod = class_getClassMethod(class, originalSelector);
+    Method swizzledMethod = class_getClassMethod(class, swizzledSelector);
+    
+    BOOL didAddMethod = class_addMethod(class, originalSelector, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod));
+    if (didAddMethod)
+    {
+        class_replaceMethod(class, swizzledSelector, method_getImplementation(originalMethod), method_getTypeEncoding(originalMethod));
+    }
+    else
+    {
+        method_exchangeImplementations(originalMethod, swizzledMethod);
+    }
+}
+
++ (UIImage *)adean_imageNamed:(NSString *)name
+{
+    UIImage *image = [self adean_imageNamed:name];
+    [self printImageNameToLocalWithImageName:name];
+    return image;
+}
+
++ (void)printImageNameToLocalWithImageName:(NSString *)name
+{
+#ifdef ADeanForTest
+    {
+        // 打印图片地址
+        ADeanLog(@"adean_msg:  imagefile %@", IMAGEFILEFILE);
+        FILE *fp;
+        const char *imageFilePath =[IMAGEFILEFILE UTF8String];
+        const char *cImageName = [[NSString stringWithFormat:@"%@\n", name] UTF8String];
+        /*打开文件*/
+        if((fp = fopen(imageFilePath, "a")) == NULL)
+        {
+            ADeanLog("文件打开出错，请检查文件是否存在\n");
+        }
+        else
+        {
+        }
+        fputs(cImageName,fp);
+        fclose(fp);
+    }
+#endif
+}
+
+@end
+</code>
+</pre>
+
+
+<p><br>
+这样只要在<code>Appdelegate</code>启动时候调用下<code>[UIImage initialize]</code>就可以将所有用到<code>imageNamed:</code>的图片都打印出来。
+如果需要打印所有已使用图片，只需要将UIImage中所有的类方法和实例方法都<code>Method Swizzling</code>下。这样项目测试一遍就可以将所有已使用图片存到一张图片清单上，只要在用脚本语言删除项目中没在图片清单上的图片即可。
+<br><br></p>
+
+<h4>注：</h4>
+
+<p>中文版的<a href="http://blog.jobbole.com/79580/">《Objective-C Runtime 运行时之四：Method Swizzling》</a>和<a href="http://www.cocoachina.com/industry/20140225/7880.html">《Method Swizzling》</a>漏掉了原著中的一段代码注释：</p>
+
+<blockquote><pre><code> // When swizzling a class method, use the following:      
+ // Class class = object_getClass((id)self);
+ // ...
+ // Method originalMethod = class_getClassMethod(class, originalSelector);
+ // Method swizzledMethod = class_getClassMethod(class, swizzledSelector);
+</code></pre></blockquote>
+
+<!--
+4， AOP
+-->
+
+
+<p><br><br><br></p>
+
+<div align = right>
+by Adorkable Dean<br>
+at Nanjing,  Jiangsu, China
+</div>
+
+
+<p><br><br><br>
+本文首发在Adorkable Dean‘s blog转载请注明原作者，<!--如果你觉得这篇文章对你有帮助或启发，也可以来请我[喝咖啡](支付宝图片)。-->如果你对这篇文章有更好的见解可以通过微信联系<a href="http://adorkabledean.github.io/adeanimages/wechat_image.png"><strong>我</strong></a>。</p>
+
+<p>利益相关：本篇文章所有涉及到的软件均为笔者日常所用工具，无任何广告费用。
+<br><br><br></p>
+
+<h4>参考文章：</h4>
+
+<p><a href="http://blog.csdn.net/songhongri/article/details/21833069">如何删除xcode项目中不再使用的图片资源</a></p>
+
+<p><a href="http://www.zhihu.com/question/20932106">有快捷的办法找到并删除 Xcode 工程中没用到的图片吗？</a></p>
+
+<!--
+[Method Swizzling和AOP(面向切面编程)实践](http://www.cocoachina.com/ios/20150120/10959.html)
+
+[Aspects iOS的AOP面向切面编程的库](http://segmentfault.com/a/1190000003499895)
+-->
+
+
+<p><a href="http://www.cocoachina.com/industry/20140225/7880.html">Method Swizzling</a></p>
+
+<p><a href="http://blog.jobbole.com/79580/">Objective-C Runtime 运行时之四：Method Swizzling</a></p>
+
+<p><a href="http://nshipster.com/method-swizzling/">Method Swizzling</a></p>
+</div>
+
+
+  <footer class="post-footer">
+    <div class="meta">
+      
+
+<DIV> 
+	<DIV> 
+		<IMG alt="" src="http://cdn.cocimg.com/bbs/attachment/upload/98/781981418713301.png" width=80 height=80>
+		</IMG>
+	</DIV> 
+	<DIV> 
+		作者： <A href="http://adorkabledean.github.io/">Adorkable Dean</A> <BR> 
+		出处： <A href="http://adorkabledean.github.io/">Adorkable Dean Blog/</A> 
+		<BR>本文基于<a target="_blank" title="Creative Commons Attribution 2.5 China Mainland License" href="http://creativecommons.org/licenses/by/2.5/cn/"> 署名 2.5 中国大陆</a>许可协议发布，欢迎转载，演绎或用于商业目的，但是必须保留本文的署名<a href="http://adorkabledean.github.io/">Adorkable Dean</a>。 
+	</DIV>
+</DIV> 
+
+
+    </div>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <div class="meta">
+      
+        <a class="basic-alignment left" href="/blog/20151026/xiao-xi-zhuan-fa-he-nsuserdefaultsde-ling-huo-shi-yong/" title="Previous Post: 消息转发和NSUserDefaults的灵活使用">&laquo; 消息转发和NSUserDefaults的灵活使用</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/20151109/method-swizzlinghe-fen-lei-de-miao-yong-cong-appdelegateqing-liang-hua-chu-li-shuo-qi/" title="Next Post: Method Swizzling和分类的妙用--从AppDelegate轻量化处理说起">Method Swizzling和分类的妙用--从AppDelegate轻量化处理说起 &raquo;</a>
+      
+    </div>
+  </footer>
+</article>
+
+  <section>
+    <h3>评论</h3>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+  </div>
+</div>
+
+  <aside id="secondary">
+  
+    <section>
+  <h1>文章分类</h1>
+  <ul id="ReverseEngineering">
+    逆向工程 
+  </ul>
+  <ul id="iOSDev">
+    iOS开发札记 
+  </ul>
+  <ul id="iOSSeurity">
+    iOS安全讨论 
+  </ul>
+  <ul id="Other">
+    随手 
+  </ul>
+</section>
+<section class="widget">
+    <form id="search" action="https://www.baidu.com" method="get">
+    	<input type="hidden" name="q" value="site:adorkabledean.github.io"/>
+    	<input type="text" name="q" results="0" class="text" placeholder="Google搜索"/>
+    </form>
+</section>
+
+<section class="widget">
+	<h3 class="widget-title">最新文章</h3>
+	<ul class="widget-list">
+		
+     	<li>
+      	  <a href="/blog/20151109/method-swizzlinghe-fen-lei-de-miao-yong-cong-appdelegateqing-liang-hua-chu-li-shuo-qi/">Method Swizzling和分类的妙用--从AppDelegate轻量化处理说起</a>
+      	</li>
+    	
+     	<li>
+      	  <a href="/blog/20151027/tong-ji-xiang-mu-zhong-tu-pian-shi-yong-qing-kuang/">统计项目中图片使用情况</a>
+      	</li>
+    	
+     	<li>
+      	  <a href="/blog/20151026/xiao-xi-zhuan-fa-he-nsuserdefaultsde-ling-huo-shi-yong/">消息转发和NSUserDefaults的灵活使用</a>
+      	</li>
+    	
+     	<li>
+      	  <a href="/blog/20151013/17-46-11-kai-fa-zhu-yi-shi-xiang-sui-shou-ji/">开发注意事项随手记</a>
+      	</li>
+    	
+     	<li>
+      	  <a href="/blog/20151013/15-38-44-readonlyde-shi-yong-zhi-zhao/">readonly的使用支招</a>
+      	</li>
+    	
+	</ul>
+</section><section>
+  <h1>关于</h1>
+  <p>Adorkable Dean : CocoaChina Swift&&应用区斑竹 iOS主架 Python主程 游戏设计师</p>
+  <p>新浪微博: <a href="http://weibo.com/234776985">@呆萌院长</a><br/>
+     Github: <a href="https://github.com/AdorkableDean">@AdorkableDean</a><br/>
+     Cocoachina: <a href="http://www.cocoachina.com/bbs/u.php?action=feed&uid=78198">@Adorkable</a>
+ </p>
+  </p>
+</section>
+
+  
+</aside>
+
+
+      	</div>
+    </div>
+  </div>
+  <footer id="footer">
+  	<div class="container">
+	Copyright &copy; 2015 - Adorkable Dean -
+  <span class="credit">Powered by <a rel="nofollow" href="http://octopress.org">Octopress</a> on <a rel="nofollow" href="http://pages.github.com/">GitHubPages</a>
+  </span>
+  - <span class="credit">Theme by <a rel="nofollow" href="http://pagecho.com">Cho</a></span>
+
+
+</div>
+
+  </footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'adorkabledean';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://adorkabledean.github.io/blog/20151027/tong-ji-xiang-mu-zhong-tu-pian-shi-yong-qing-kuang/';
+        var disqus_url = 'http://adorkabledean.github.io/blog/20151027/tong-ji-xiang-mu-zhong-tu-pian-shi-yong-qing-kuang/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

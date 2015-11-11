@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: 随手 | Adorkable Dean]]></title>
+  <link href="http://adorkabledean.github.io/blog/categories/sui-shou/atom.xml" rel="self"/>
+  <link href="http://adorkabledean.github.io/"/>
+  <updated>2015-11-10T17:58:00+08:00</updated>
+  <id>http://adorkabledean.github.io/</id>
+  <author>
+    <name><![CDATA[Adorkable Dean]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[写在前面]]></title>
+    <link href="http://adorkabledean.github.io/blog/20150603/xie-zai-qian-mian/"/>
+    <updated>2015-06-03T15:58:33+08:00</updated>
+    <id>http://adorkabledean.github.io/blog/20150603/xie-zai-qian-mian</id>
+    <content type="html"><![CDATA[<h1>写在前面</h1>
+
+<p>@(随手)[AdorkableDean|生活感悟]<br>
+2014年，不是本命年，但是被折磨了一年。本来计划的很多事情都停下来了；很多想做的事情都不得不放弃了；技术又退步了不少。唉~ <br>
+2015年，重新回归学习，重新回到正轨。<br>
+<br><br><br></p>
+
+<div align = right>
+by Adorkable Dean<br>
+at Nanjing,  Jiangsu, China
+</div>
+
+
+<p><br><br><br>
+本文首发在Adorkable Dean‘s blog转载请注明原作者，<!--如果你觉得这篇文章对你有帮助或启发，也可以来请我[喝咖啡](支付宝图片)。-->如果你对这篇文章有更好的见解可以通过微信联系<a href="http://adorkabledean.github.io/adeanimages/wechat_image.png"><strong>我</strong></a>。</p>
+
+<p>利益相关：本篇文章所有涉及到的软件均为笔者日常所用工具，无任何广告费用。
+<br><br><br></p>
+]]></content>
+  </entry>
+  
+</feed>

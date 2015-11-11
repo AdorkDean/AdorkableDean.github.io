@@ -1,0 +1,325 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!-->
+<html class="no-js" lang="zh-CN"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>开发注意事项随手记 - Adorkable Dean</title>
+  <meta name="author" content="Adorkable Dean">
+  <!--[if lt IE 9]>
+    <script src="http://x.papaapp.com/farm1/a571d2/8dda131d/html5shiv.js"></script>
+    <![endif]-->
+  
+  <meta name="description" content="开发注意事项随手记 | 查看评论 开发注意事项随手记 在开发过程中踩过各种坑，开篇帖子专门记录已经踩过的各种坑。 鼓励大家做完一些东西，都能写一些文章。比如，sdk整个架构讨论的过程。实验过的各种方案，最终的选择方法。这些思考的过程都可以写成文章发表
+每次研究完一个东西，都可以整理记录下来 1 &hellip;">
+  
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://adorkabledean.github.io/blog/20151013/17-46-11-kai-fa-zhu-yi-shi-xiang-sui-shou-ji/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script type="text/javascript" src="http://t.papaapp.com/js/libs/jquery/1.7.2/jquery.js"></script>
+  <link href="/atom.xml" rel="alternate" title="Adorkable Dean" type="application/atom+xml">
+
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+
+  
+
+</head>
+<body   >
+  <header id="header" class="clearfix">    <div class="container">
+        <div class="col-group">
+            <div class="site-name ">
+                <a id="logo" href="/">
+                   Adorkable Dean
+                </a>
+                <p class="description">呆萌院长的涅槃重生</p>
+            </div>
+            <div>
+                <nav id="nav-menu" class="clearfix">
+                    <a class="index-nav current" href="/">文章</a>
+<a class="archives-nav" href="/blog/archives">归档</a>
+                </nav>
+            </div>
+        </div>
+    </div>
+</header>
+  <div id="body">
+    <div class="container">
+    	<div class="col-group">
+			<div class="col-8" id="main">
+  <div class="res-cons">
+  <article class="post clearfix">
+  
+  <header>
+    
+      <h1 class="post-title">开发注意事项随手记</h1>
+    
+    
+      <p class="post-meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-10-13T17:46:11+08:00" pubdate data-updated="true"></time>
+        
+         | <a href="#disqus_thread">查看评论</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="post-content"><h1>开发注意事项随手记</h1>
+
+<p>在开发过程中踩过各种坑，开篇帖子专门记录已经踩过的各种坑。</p>
+
+<blockquote><p>鼓励大家做完一些东西，都能写一些文章。比如，sdk整个架构讨论的过程。实验过的各种方案，最终的选择方法。这些思考的过程都可以写成文章发表
+每次研究完一个东西，都可以整理记录下来</p></blockquote>
+
+<h4>1. 防御性代码</h4>
+
+<ol>
+<li><p>将objectAtIndex这种很容易crash的封装。</p></li>
+<li><p>判断数组是否为空，NSString/NSDictionary，判断i是否数组越界。</p></li>
+<li><p>对基本释放进行封装，比如最基本的释放，NSTimer释放，View释放，Tableview释放，HTTP释放。<em>ARC中释放部分忽略</em></p></li>
+<li><p>非空判断，采用isEqual。</p></li>
+</ol>
+
+
+<h4>2. 名称定义</h4>
+
+<ol>
+<li><p>不管他们是Cocoa自带还是你自己创建的，类名需要带上前缀且必须要大写。</p></li>
+<li><p>变量名以小写字母开始，往后每出现一个新单词，该单词首字母大写（驼峰原则）。</p></li>
+<li><p>规范化，宏定义放在一个.h文件中，全局变量放在一个.h中。<em>忽略此做法，枚举方法可以按照不同类分别存放</em></p></li>
+<li><p>类名如何定义，函数名如何定义，变量名如何定义。宏名字全部使用大写字母。通知的定义统一放在一个.h文件中。</p></li>
+<li><p>网络返回的基本error定义统一放在一个.h文件中。这些.h声明放在一个.h中，统一调用，提高编译效率。</p></li>
+</ol>
+
+
+<h4>3. 提高开发效率</h4>
+
+<ol>
+<li><p>一些预处理放在统一处，放在view初始化之后，比方说文件夹的创建，统计数据处理，当然了统计的处理是为了统计什么模块用的比较多，什么按钮用的比较多，找出用户的习惯。</p></li>
+<li><p>创建基本的rootviewcontroller &amp; rootView。<em>推荐多使用组合分类，少使用继承</em></p></li>
+<li><p>采用的判断：因为登录之类的，需要将nsstring的基本判抽出来，用统一的类实现处理。对于tablewviewcell，一般采用自定义方式。tableview处理，一般采用plist，处理起来简单方便。</p></li>
+<li><p>适当注释，因为部分类名可以涵盖注释的作用。一般多用#prama来区分。 <em>可以使用code snippets</em></p></li>
+<li><p>单元测试：.m采用profile analyze 内存分析</p></li>
+</ol>
+
+
+<h4>4. 代码构建</h4>
+
+<ol>
+<li><p>可扩展性</p></li>
+<li><p>可移植性</p></li>
+<li><p>良好的文档</p></li>
+<li><p>生命周期管理：最初学习的是Three20中，将类中全局变量放在自己的get方法中初始化。<em>即采用懒加载</em></p></li>
+</ol>
+
+
+<h4>5. 提高效率</h4>
+
+<ol>
+<li><p>画流程图</p></li>
+<li><p>国际化语言统一定义，采用脚本语言统一替换。避免人工查找费时。</p></li>
+<li><p>尽量不暴露变量，即尽量私有化。<em>采用readonly&amp;readwrite限制变量安全性</em></p></li>
+<li><p>开发完成后，将写详细设计书。可以总结出一些经验教训，在下一版本中得到改善。</p></li>
+</ol>
+
+
+<h4>6. 其他</h4>
+
+<ol>
+<li><p>写文件采用的是NSFileHandle，可以追加。当然，还可以用C中的基本处理，fwrite，FileStream，主要是服务器不是分段的，也没有返回长度，所以才一次性。没有断点续传的功能。</p></li>
+<li><p>代码强调分层 包装 抽象。数据库  分层  dao xdao基本增删改查 bo。请求也是层层封装的。比方说，Pan中有很多操作，现将基本的http请求定义好，然后不同的文件（夹）的请求在此基础上定义。最后到Controller那边处理这些。</p></li>
+<li><p>Model，一般是封装在统一个Dto中。这样有些操作的处理传参就不用写很多，直接一个Dto即可。
+XMPP有些扩展，在调用原有的基础上，进行扩展。</p></li>
+<li><p>关于数据库使用，fmdb每秒60次读写 ，文件每秒200次左右，写文件效率高。图片给路径形式。</p></li>
+</ol>
+
+
+<p><br><br><br></p>
+
+<div align = right>
+by Adorkable Dean<br>
+at Nanjing,  Jiangsu, China
+</div>
+
+
+<p><br><br><br>
+本文首发在Adorkable Dean‘s blog转载请注明原作者，<!--如果你觉得这篇文章对你有帮助或启发，也可以来请我[喝咖啡](支付宝图片)。-->如果你对这篇文章有更好的见解可以通过微信联系<a href="http://adorkabledean.github.io/adeanimages/wechat_image.png"><strong>我</strong></a>。</p>
+
+<p>利益相关：本篇文章所有涉及到的软件均为笔者日常所用工具，无任何广告费用。
+<br><br><br></p>
+</div>
+
+
+  <footer class="post-footer">
+    <div class="meta">
+      
+
+<DIV> 
+	<DIV> 
+		<IMG alt="" src="http://cdn.cocimg.com/bbs/attachment/upload/98/781981418713301.png" width=80 height=80>
+		</IMG>
+	</DIV> 
+	<DIV> 
+		作者： <A href="http://adorkabledean.github.io/">Adorkable Dean</A> <BR> 
+		出处： <A href="http://adorkabledean.github.io/">Adorkable Dean Blog/</A> 
+		<BR>本文基于<a target="_blank" title="Creative Commons Attribution 2.5 China Mainland License" href="http://creativecommons.org/licenses/by/2.5/cn/"> 署名 2.5 中国大陆</a>许可协议发布，欢迎转载，演绎或用于商业目的，但是必须保留本文的署名<a href="http://adorkabledean.github.io/">Adorkable Dean</a>。 
+	</DIV>
+</DIV> 
+
+
+    </div>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <div class="meta">
+      
+        <a class="basic-alignment left" href="/blog/20151013/15-38-44-readonlyde-shi-yong-zhi-zhao/" title="Previous Post: readonly的使用支招">&laquo; readonly的使用支招</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/20151026/xiao-xi-zhuan-fa-he-nsuserdefaultsde-ling-huo-shi-yong/" title="Next Post: 消息转发和NSUserDefaults的灵活使用">消息转发和NSUserDefaults的灵活使用 &raquo;</a>
+      
+    </div>
+  </footer>
+</article>
+
+  <section>
+    <h3>评论</h3>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+  </div>
+</div>
+
+  <aside id="secondary">
+  
+    <section>
+  <h1>文章分类</h1>
+  <ul id="ReverseEngineering">
+    逆向工程 
+  </ul>
+  <ul id="iOSDev">
+    iOS开发札记 
+  </ul>
+  <ul id="iOSSeurity">
+    iOS安全讨论 
+  </ul>
+  <ul id="Other">
+    随手 
+  </ul>
+</section>
+<section class="widget">
+    <form id="search" action="https://www.baidu.com" method="get">
+    	<input type="hidden" name="q" value="site:adorkabledean.github.io"/>
+    	<input type="text" name="q" results="0" class="text" placeholder="Google搜索"/>
+    </form>
+</section>
+
+<section class="widget">
+	<h3 class="widget-title">最新文章</h3>
+	<ul class="widget-list">
+		
+     	<li>
+      	  <a href="/blog/20151109/method-swizzlinghe-fen-lei-de-miao-yong-cong-appdelegateqing-liang-hua-chu-li-shuo-qi/">Method Swizzling和分类的妙用--从AppDelegate轻量化处理说起</a>
+      	</li>
+    	
+     	<li>
+      	  <a href="/blog/20151027/tong-ji-xiang-mu-zhong-tu-pian-shi-yong-qing-kuang/">统计项目中图片使用情况</a>
+      	</li>
+    	
+     	<li>
+      	  <a href="/blog/20151026/xiao-xi-zhuan-fa-he-nsuserdefaultsde-ling-huo-shi-yong/">消息转发和NSUserDefaults的灵活使用</a>
+      	</li>
+    	
+     	<li>
+      	  <a href="/blog/20151013/17-46-11-kai-fa-zhu-yi-shi-xiang-sui-shou-ji/">开发注意事项随手记</a>
+      	</li>
+    	
+     	<li>
+      	  <a href="/blog/20151013/15-38-44-readonlyde-shi-yong-zhi-zhao/">readonly的使用支招</a>
+      	</li>
+    	
+	</ul>
+</section><section>
+  <h1>关于</h1>
+  <p>Adorkable Dean : CocoaChina Swift&&应用区斑竹 iOS主架 Python主程 游戏设计师</p>
+  <p>新浪微博: <a href="http://weibo.com/234776985">@呆萌院长</a><br/>
+     Github: <a href="https://github.com/AdorkableDean">@AdorkableDean</a><br/>
+     Cocoachina: <a href="http://www.cocoachina.com/bbs/u.php?action=feed&uid=78198">@Adorkable</a>
+ </p>
+  </p>
+</section>
+
+  
+</aside>
+
+
+      	</div>
+    </div>
+  </div>
+  <footer id="footer">
+  	<div class="container">
+	Copyright &copy; 2015 - Adorkable Dean -
+  <span class="credit">Powered by <a rel="nofollow" href="http://octopress.org">Octopress</a> on <a rel="nofollow" href="http://pages.github.com/">GitHubPages</a>
+  </span>
+  - <span class="credit">Theme by <a rel="nofollow" href="http://pagecho.com">Cho</a></span>
+
+
+</div>
+
+  </footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'adorkabledean';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://adorkabledean.github.io/blog/20151013/17-46-11-kai-fa-zhu-yi-shi-xiang-sui-shou-ji/';
+        var disqus_url = 'http://adorkabledean.github.io/blog/20151013/17-46-11-kai-fa-zhu-yi-shi-xiang-sui-shou-ji/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,730 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!-->
+<html class="no-js" lang="zh-CN"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Method Swizzling和分类的妙用--从AppDelegate轻量化处理说起 - Adorkable Dean</title>
+  <meta name="author" content="Adorkable Dean">
+  <!--[if lt IE 9]>
+    <script src="http://x.papaapp.com/farm1/a571d2/8dda131d/html5shiv.js"></script>
+    <![endif]-->
+  
+  <meta name="description" content="Method Swizzling和分类的妙用--从AppDelegate轻量化处理说起 | 查看评论 Method Swizzling和分类的妙用&ndash;从AppDelegate轻量化处理说起 简介
+函数模块化
+类模块化
+分类模块化
+Method Swizzling化
+参考文章 简介 &hellip;">
+  
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://adorkabledean.github.io/blog/20151109/method-swizzlinghe-fen-lei-de-miao-yong-cong-appdelegateqing-liang-hua-chu-li-shuo-qi/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script type="text/javascript" src="http://t.papaapp.com/js/libs/jquery/1.7.2/jquery.js"></script>
+  <link href="/atom.xml" rel="alternate" title="Adorkable Dean" type="application/atom+xml">
+
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+
+  
+
+</head>
+<body   >
+  <header id="header" class="clearfix">    <div class="container">
+        <div class="col-group">
+            <div class="site-name ">
+                <a id="logo" href="/">
+                   Adorkable Dean
+                </a>
+                <p class="description">呆萌院长的涅槃重生</p>
+            </div>
+            <div>
+                <nav id="nav-menu" class="clearfix">
+                    <a class="index-nav current" href="/">文章</a>
+<a class="archives-nav" href="/blog/archives">归档</a>
+                </nav>
+            </div>
+        </div>
+    </div>
+</header>
+  <div id="body">
+    <div class="container">
+    	<div class="col-group">
+			<div class="col-8" id="main">
+  <div class="res-cons">
+  <article class="post clearfix">
+  
+  <header>
+    
+      <h1 class="post-title">Method Swizzling和分类的妙用--从AppDelegate轻量化处理说起</h1>
+    
+    
+      <p class="post-meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-11-09T21:23:43+08:00" pubdate data-updated="true"></time>
+        
+         | <a href="#disqus_thread">查看评论</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="post-content"><h1>Method Swizzling和分类的妙用&ndash;从AppDelegate轻量化处理说起</h1>
+
+<ul>
+<li>简介</li>
+<li>函数模块化</li>
+<li>类模块化</li>
+<li>分类模块化</li>
+<li>Method Swizzling化</li>
+<li>参考文章</li>
+</ul>
+
+
+<p><img src="http://jbcdn2.b0.upaiyun.com/2014/02/48651426c0cd13af3f64447c7c24f648.png" alt="" /></p>
+
+<h2>简介</h2>
+
+<p>在iOS工程中，AppDelegate往往会有上千行，甚至几千行，这样就会给维护AppDelegate带来诸多麻烦。比方说，老板想在出现HomeViewController之前弹出广告并停顿几秒，这样你就要加入插入广告的逻辑；又比方说，老板想在开始做个请求，判断某个开关是否打开。这样就会在AppDelegate中插入很多相关的不相关的代码。</p>
+
+<p>在AppDelegate中，<code>- (BOOL)application:(UIApplication <em>)application didFinishLaunchingWithOptions:(NSDictionary </em>)launchOptions</code>是<strong>&ldquo;Tells the delegate when the application has launched and may have additional launch options to handle.&rdquo;</strong>，即在app开始运行时会调用里面的方法。在<code>didFinishLaunchingWithOptions</code>中，我们往往会渲染window，注册第三方监控库，加入基本页面跳转逻辑。</p>
+
+<p>下面是一个常见项目中的<code>didFinishLaunchingWithOptions</code>：</p>
+
+<pre>
+<code>
+// objective-c语言
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+        
+    if (!([ADeanUserDataManager sharedManager].userName != nil &&
+          [ADeanUserDataManager sharedManager].userName.length > 0 &&
+          [ADeanUserDataManager sharedManager].userPassword != nil &&
+          [ADeanUserDataManager sharedManager].userPassword.length > 0)) {
+        
+        // 用户名、密码为空时候强制为未登录
+        [ADeanUserDataManager sharedManager].isUserLogined = @NO;
+    }
+    
+    self.window.rootViewController = self.tabbarController;
+    [self.window makeKeyAndVisible];
+    
+    //  基本页面跳转逻辑
+    /*--------------------------------------*/
+    if ([[ADeanUserDataManager sharedManager].everLaunched boolValue] == NO) {
+    //是否是第一次启动判断
+        [ADeanUserDataManager sharedManager].everLaunched = [NSNumber numberWithBool:YES];
+        [self.window addSubview:self.helpViewController.view];
+    }
+    /*--------------------------------------*/
+
+    
+    //  注册第三方库 
+    /*--------------------------------------*/
+    // 注册Crash统计 -- Crashlytics
+    [Fabric with:@[[Crashlytics class]]];
+    [MobClick startWithAppkey:UMENG_APPKEY];
+    [MobClick setCrashReportEnabled:NO]; // 关掉MobClick Crash Report收集开关
+#ifdef ADeanForTest
+    [MobClick setCrashReportEnabled:YES]; // 打开MobClick Crash Report收集开关
+    [MobClick setLogEnabled:YES];
+#endif
+    
+    [ShareSDK registerApp:ShareSDKAppKey];
+    
+    //新浪
+    [ShareSDK connectSinaWeiboWithAppKey:SinaAppKey
+                               appSecret:SinaAppSecret
+                             redirectUri:SinaRedirectUri];
+    
+    //新浪微博客户端应用
+    [ShareSDK connectSinaWeiboWithAppKey:SinaAppKey
+                               appSecret:SinaAppSecret
+                             redirectUri:SinaRedirectUri
+                             weiboSDKCls:[WeiboSDK class]];
+    
+#if TARGET_IPHONE_SIMULATOR
+#else
+    //QQ好友
+    [ShareSDK connectQQWithQZoneAppKey:QZoneAppKey
+                     qqApiInterfaceCls:[QQApiInterface class]
+                       tencentOAuthCls:[TencentOAuth class]];
+#endif
+    //微信朋友圈
+    [ShareSDK connectWeChatSessionWithAppId:WeiXinAppID wechatCls:[WXApi class]];
+    //微信好友
+    [ShareSDK connectWeChatTimelineWithAppId:WeiXinAppID wechatCls:[WXApi class]];
+
+    [MiPushSDK registerMiPush:self type:(UIRemoteNotificationTypeBadge |
+                                         UIRemoteNotificationTypeSound |
+                                         UIRemoteNotificationTypeAlert) connect:YES];
+    /*--------------------------------------*/
+                                         
+    //  其他逻辑
+    [self registerRemotePushNotification];
+    [self getSwitchInfoFromService];
+    [self appIntegrityCheck];
+    [self appSecurityCheck]
+    ......
+    
+    return YES;
+}
+</code>
+</pre>
+
+
+<p>下面我们就来看看，有什么好的办法可以对AppDelegate进行瘦身，加强代码的可读性和可维护性，并将代码放到适当的地方。</p>
+
+<h2>函数模块化</h2>
+
+<p>上述<code>didFinishLaunchingWithOptions</code>中可以按照功能逻辑划分为：处理启动逻辑，注册第三方库，处理其他逻辑三类。这样就可以优化为：</p>
+
+<pre>
+<code>
+// objective-c语言
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+        
+    if (!([ADeanUserDataManager sharedManager].userName != nil &&
+          [ADeanUserDataManager sharedManager].userName.length > 0 &&
+          [ADeanUserDataManager sharedManager].userPassword != nil &&
+          [ADeanUserDataManager sharedManager].userPassword.length > 0)) {
+        
+        // 用户名、密码为空时候强制为未登录
+        [ADeanUserDataManager sharedManager].isUserLogined = @NO;
+    }
+    
+    self.window.rootViewController = self.tabbarController;
+    [self.window makeKeyAndVisible];
+    
+    //  基本页面跳转逻辑
+    [self baseViewJumpLogic];
+    //  注册第三方库 
+    [self registThirdPart];                     
+    //  其他逻辑
+    [self handleOtherLogic]
+    
+    return YES;
+}
+
+- (void)baseViewJumpLogic {
+
+    if ([[ADeanUserDataManager sharedManager].everLaunched boolValue] == NO) {
+    //是否是第一次启动判断
+        [ADeanUserDataManager sharedManager].everLaunched = [NSNumber numberWithBool:YES];
+        [self.window addSubview:self.helpViewController.view];
+    }
+}
+
+- (void)registThirdPart {
+    // 注册Crash统计 -- Crashlytics
+    [Fabric with:@[[Crashlytics class]]];
+    [MobClick startWithAppkey:UMENG_APPKEY];
+    [MobClick setCrashReportEnabled:NO]; // 关掉MobClick Crash Report收集开关
+#ifdef ADeanForTest
+    [MobClick setCrashReportEnabled:YES]; // 打开MobClick Crash Report收集开关
+    [MobClick setLogEnabled:YES];
+#endif
+    
+    [ShareSDK registerApp:ShareSDKAppKey];
+    
+    //新浪
+    [ShareSDK connectSinaWeiboWithAppKey:SinaAppKey
+                               appSecret:SinaAppSecret
+                             redirectUri:SinaRedirectUri];
+    
+    //新浪微博客户端应用
+    [ShareSDK connectSinaWeiboWithAppKey:SinaAppKey
+                               appSecret:SinaAppSecret
+                             redirectUri:SinaRedirectUri
+                             weiboSDKCls:[WeiboSDK class]];
+    
+#if TARGET_IPHONE_SIMULATOR
+#else
+    //QQ好友
+    [ShareSDK connectQQWithQZoneAppKey:QZoneAppKey
+                     qqApiInterfaceCls:[QQApiInterface class]
+                       tencentOAuthCls:[TencentOAuth class]];
+#endif
+    //微信朋友圈
+    [ShareSDK connectWeChatSessionWithAppId:WeiXinAppID wechatCls:[WXApi class]];
+    //微信好友
+    [ShareSDK connectWeChatTimelineWithAppId:WeiXinAppID wechatCls:[WXApi class]];
+
+    [MiPushSDK registerMiPush:self type:(UIRemoteNotificationTypeBadge |
+                                         UIRemoteNotificationTypeSound |
+                                         UIRemoteNotificationTypeAlert) connect:YES];
+}
+
+- (void)handleOtherLogic {
+    [self registerRemotePushNotification];
+    [self getSwitchInfoFromService];
+    [self appIntegrityCheck];
+    [self appSecurityCheck]
+    ......
+}
+</code>
+</pre>
+
+
+<p>模块化后，代码瞬间变得易读很多，而且需要改什么可以直接去相应的模块添加。但是这个仅仅是将代码的顺序变化下，相同功能的代码抽到一个函数中，代码行数没有减少，所有的功能还是糅合在一个.m中。</p>
+
+<h2>类模块化</h2>
+
+<p>很多其他逻辑是业务逻辑的，可以抽离到业务Model中，通过类模块化便捷使用。这样就可以优化为：</p>
+
+<pre>
+<code>
+// objective-c语言
+#import "ADeanAppCheck.h"
+#import "ADeanSwitches.h"
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+        
+    if (!([ADeanUserDataManager sharedManager].userName != nil &&
+          [ADeanUserDataManager sharedManager].userName.length > 0 &&
+          [ADeanUserDataManager sharedManager].userPassword != nil &&
+          [ADeanUserDataManager sharedManager].userPassword.length > 0)) {
+        
+        // 用户名、密码为空时候强制为未登录
+        [ADeanUserDataManager sharedManager].isUserLogined = @NO;
+    }
+    
+    self.window.rootViewController = self.tabbarController;
+    [self.window makeKeyAndVisible];
+    
+    //  基本页面跳转逻辑
+    [self baseViewJumpLogic];
+    //  注册第三方库 
+    [self registThirdPart];                     
+    //  其他逻辑
+    [self handleOtherLogic]
+    
+    return YES;
+}
+
+- (void)handleOtherLogic {
+    [ADeanAppCheck appInfoCheck]; // Integrity & Security Check
+    [ADeanSwitches appSwitchInit];  // Get Switch From Service 
+    ......
+}
+</code>
+</pre>
+
+
+<h2>分类模块化</h2>
+
+<p>先抛个问题：分类中是否可以定义变量？</p>
+
+<p>如果不知道可以参考：<a href="http://www.jianshu.com/p/0ca0bbb0b200">iOS分类中通过runtime添加动态属性</a></p>
+
+<p>分类能够做到的事情主要是：即使在你不知道一个类的源码情况下，向这个类添加扩展的方法。这里我们主要是将对外开放的方法和一部分变量拿到分类中处理。这样进一步轻量化AppDelegate本身进行代码量。</p>
+
+<pre>
+<code>
+// objective-c语言
+// ADeanAppDelegate+Light.h文件
+#import "AppDelegate.h"
+@interface ADeanAppDelegate (Light)
+
+@property (nonatomic, strong) UITabbarController *tabbarController;
+
+/*!
+ @brief 全局appDeleaget
+ */
++ (AppDelegate *)appDelegate;
+
+/*!
+ @method
+ @brief 关闭系统键盘
+ */
++ (void)closeKeyWindow;
+
+@end
+</code>
+</pre>
+
+
+
+
+<pre>
+<code>
+// objective-c语言
+// ADeanAppDelegate+Light.m文件
+#import "ADeanAppDelegate+Light.h"
+- (UITabbarController *)tabbarController {
+    UITabbarController *tabbarController = objc_getAssociatedObject(self, &kTabbarControllerObjectKey);
+    if (!tabbarController) {
+        tabbarController = [[UITabbarController alloc] init];
+        objc_setAssociatedObject(self, &kTabbarControllerObjectKey, tabbarController, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    return tabbarController;
+}
+- (void)setTabbarController:(UITabbarController *)tabbarController {
+    objc_setAssociatedObject(self, &kTabbarControllerObjectKey, tabbarController, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
++ (AppDelegate *)appDelegate {
+    return (AppDelegate *)[[UIApplication sharedApplication] delegate];
+}
+
++ (void)closeKeyWindow {
+    [[UIApplication sharedApplication].keyWindow endEditing:YES];
+}
+</code>
+</pre>
+
+
+<p>这样在AppDelegate中，对外开放的方法和部分变量可以抽离到分类中去。也可以根据作用定义不同的AppDelegate分类：</p>
+
+<p><code>#&ldquo;ADeanAppDelegate+View.h&rdquo;</code></p>
+
+<p><code>#&ldquo;ADeanAppDelegate+Controller.h&rdquo;</code></p>
+
+<p><code>#&ldquo;ADeanAppDelegate+Method.h&rdquo;</code></p>
+
+<p>&hellip;</p>
+
+<p>这样代码结构会更加清晰明了。
+抽出来的AppDelegate只剩下注册第三方库了，因为第三方库很多是需要在<code>didFinishLaunchingWithOptions</code>中运行，正常的方法就很难。</p>
+
+<h2>Method Swizzling化</h2>
+
+<p>Method Swizzling是改变一个selector的实际实现的技术，关于Method Swizzling的概念、原理谷歌一堆。</p>
+
+<blockquote><p><a href="http://nshipster.com/method-swizzling/">Method Swizzling</a>中以viewWillAppear为例，讲解了Method Swizzling的基本用法。</p></blockquote>
+
+<pre>
+<code>
+#import "ADeanAppDelegate+Hook.h"
+#import "ADeanMethodSwizzling.h"
+#import "MobClick.h"
+#import "WXApi.h"
+#import "WeiboSDK.h"
+#import <Fabric/Fabric.h>
+#import <Crashlytics/Crashlytics.h>
+#import <ShareSDK/ShareSDK.h>
+#if TARGET_IPHONE_SIMULATOR
+
+#else
+#import <TencentOpenAPI/QQApi.h>
+#import <TencentOpenAPI/QQApiInterface.h>
+#import <TencentOpenAPI/TencentOAuth.h>
+#endif
+
+
+@implementation ADeanAppDelegate (Hook)
+
++ (void)initialize
+{
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        [self adean_AppDelegateHook];
+    });
+}
+
++ (void)adean_AppDelegateHook
+{
+    SwizzlingMethod([ADeanAppDelegate class], @selector(application:didFinishLaunchingWithOptions:), @selector(adean_application:didFinishLaunchingWithOptions:));
+    SwizzlingMethod([ADeanAppDelegate class], @selector(application:handleOpenURL:), @selector(adean_application:handleOpenURL:));
+    SwizzlingMethod([ADeanAppDelegate class], @selector(application:openURL:sourceApplication:annotation:), @selector(adean_application:openURL:sourceApplication:annotation:));
+    SwizzlingMethod([ADeanAppDelegate class], @selector(applicationDidReceiveMemoryWarning:), @selector(adean_applicationDidReceiveMemoryWarning:));
+
+}
+
+#pragma mark - Method Swizzling
+
+- (BOOL)adean_application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    
+    
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        // 耗时的操作
+        // 注册Crash统计 -- Crashlytics
+        [Fabric with:@[[Crashlytics class]]];
+        
+        // 友盟统计
+        [MobClick startWithAppkey:UMENG_APPKEY];
+        [MobClick setCrashReportEnabled:NO]; // 关掉MobClick Crash Report收集开关
+#ifdef ADeanForTest
+        [MobClick setCrashReportEnabled:YES]; // 打开MobClick Crash Report收集开关
+        [MobClick setLogEnabled:YES];
+#endif
+        
+        
+        [ShareSDK registerApp:ShareSDKAppKey];
+        
+        //新浪
+        [ShareSDK connectSinaWeiboWithAppKey:SinaAppKey
+                                   appSecret:SinaAppSecret
+                                 redirectUri:SinaRedirectUri];
+        
+        //新浪微博客户端应用
+        [ShareSDK connectSinaWeiboWithAppKey:SinaAppKey
+                                   appSecret:SinaAppSecret
+                                 redirectUri:SinaRedirectUri
+                                 weiboSDKCls:[WeiboSDK class]];
+        
+#if TARGET_IPHONE_SIMULATOR
+#else
+        //QQ好友
+        [ShareSDK connectQQWithQZoneAppKey:QZoneAppKey
+                         qqApiInterfaceCls:[QQApiInterface class]
+                           tencentOAuthCls:[TencentOAuth class]];
+#endif
+        //微信朋友圈
+        [ShareSDK connectWeChatSessionWithAppId:WeiXinAppID wechatCls:[WXApi class]];
+        //微信好友
+        [ShareSDK connectWeChatTimelineWithAppId:WeiXinAppID wechatCls:[WXApi class]];
+
+    });
+
+
+
+    return [self adean_application:application didFinishLaunchingWithOptions:launchOptions];
+}
+
+
+- (BOOL)adean_application:(UIApplication *)application handleOpenURL:(NSURL *)url
+{
+    [ShareSDK handleOpenURL:url wxDelegate:self];
+    return [self adean_application:application handleOpenURL:url];
+}
+
+- (BOOL)adean_application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation
+{
+    [ShareSDK handleOpenURL:url sourceApplication:sourceApplication annotation:annotation wxDelegate:self];
+    return [self adean_application:application openURL:url sourceApplication:sourceApplication annotation:annotation];
+}
+
+-  (void)adean_applicationDidReceiveMemoryWarning:(UIApplication *)application {
+    
+    [self adean_applicationDidReceiveMemoryWarning:application];
+}
+
+@end
+
+</code>
+</pre>
+
+
+<p>这下再去看下<code>AppDelegate</code>文件，代码不超过200行了。</p>
+
+<h2>小结</h2>
+
+<h4>Method Swizzling常见的应用场景：</h4>
+
+<p>1，用于记录或者存储，比方说记录ViewController进入次数、Btn的点击事件、ViewController的停留时间等等。
+可以通过Runtime获取到具体ViewController、Btn信息，然后传给服务器。</p>
+
+<p>2，添加需要而系统没提供的方法，比方说修改Statusbar颜色。</p>
+
+<p>3，用于轻量化、模块化处理，如上面介绍的，代码轻量化处理。</p>
+
+<p>Method Swizzling是把双刃剑，需要正确理解它的使用。</p>
+
+<h4>分类增加变量的使用场景：</h4>
+
+<p>1，过多继承时，可以通过分类减少继承层级，清晰流程框架。比方说，ViewController可能需要相互冲突的事件，单一父类会导致逻辑复杂。这时候可以通过分类简化逻辑，不同的ViewController引用不同的分类。</p>
+
+<p>2，扩展类属性。</p>
+
+<p><br>
+<strong>上面我们学习了一些瘦身的技巧，希望通过这些方法写出更可读性更高，可维护性更高的代码。</strong></p>
+
+<p><br></p>
+
+<h6>提醒：</h6>
+
+<p>本文涉及到的<a href="https://github.com/AdorkableDean/iOSReadNoteDemo">Demo</a>已经放到GitHub上了。<em>Demo可能与本文有点出入，部分函数命名跟文章中不一致。</em></p>
+
+<p><br><br><br></p>
+
+<div align = right>
+by Adorkable Dean<br>
+at Nanjing,  Jiangsu, China
+</div>
+
+
+<p><br><br><br>
+本文首发在Adorkable Dean‘s blog转载请注明原作者，<!--如果你觉得这篇文章对你有帮助或启发，也可以来请我[喝咖啡](支付宝图片)。-->如果你对这篇文章有更好的见解可以通过微信联系<a href="http://adorkabledean.github.io/adeanimages/wechat_image.png"><strong>我</strong></a>。</p>
+
+<p>利益相关：本篇文章所有涉及到的软件均为笔者日常所用工具，无任何广告费用。
+<br><br><br></p>
+
+<h2>参考文章：</h2>
+
+<p><a href="http://www.tairan.com/archives/4508/">打造轻量化的View Controller</a></p>
+
+<p><a href="http://blog.csdn.net/ajrm0925/article/details/7431982/">ObjC的initialize和init</a></p>
+
+<p><a href="http://www.wtoutiao.com/a/1342550.html">ViewController瘦身方法总结</a></p>
+</div>
+
+
+  <footer class="post-footer">
+    <div class="meta">
+      
+
+<DIV> 
+	<DIV> 
+		<IMG alt="" src="http://cdn.cocimg.com/bbs/attachment/upload/98/781981418713301.png" width=80 height=80>
+		</IMG>
+	</DIV> 
+	<DIV> 
+		作者： <A href="http://adorkabledean.github.io/">Adorkable Dean</A> <BR> 
+		出处： <A href="http://adorkabledean.github.io/">Adorkable Dean Blog/</A> 
+		<BR>本文基于<a target="_blank" title="Creative Commons Attribution 2.5 China Mainland License" href="http://creativecommons.org/licenses/by/2.5/cn/"> 署名 2.5 中国大陆</a>许可协议发布，欢迎转载，演绎或用于商业目的，但是必须保留本文的署名<a href="http://adorkabledean.github.io/">Adorkable Dean</a>。 
+	</DIV>
+</DIV> 
+
+
+    </div>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <div class="meta">
+      
+        <a class="basic-alignment left" href="/blog/20151027/tong-ji-xiang-mu-zhong-tu-pian-shi-yong-qing-kuang/" title="Previous Post: 统计项目中图片使用情况">&laquo; 统计项目中图片使用情况</a>
+      
+      
+    </div>
+  </footer>
+</article>
+
+  <section>
+    <h3>评论</h3>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+  </div>
+</div>
+
+  <aside id="secondary">
+  
+    <section>
+  <h1>文章分类</h1>
+  <ul id="ReverseEngineering">
+    逆向工程 
+  </ul>
+  <ul id="iOSDev">
+    iOS开发札记 
+  </ul>
+  <ul id="iOSSeurity">
+    iOS安全讨论 
+  </ul>
+  <ul id="Other">
+    随手 
+  </ul>
+</section>
+<section class="widget">
+    <form id="search" action="https://www.baidu.com" method="get">
+    	<input type="hidden" name="q" value="site:adorkabledean.github.io"/>
+    	<input type="text" name="q" results="0" class="text" placeholder="Google搜索"/>
+    </form>
+</section>
+
+<section class="widget">
+	<h3 class="widget-title">最新文章</h3>
+	<ul class="widget-list">
+		
+     	<li>
+      	  <a href="/blog/20151109/method-swizzlinghe-fen-lei-de-miao-yong-cong-appdelegateqing-liang-hua-chu-li-shuo-qi/">Method Swizzling和分类的妙用--从AppDelegate轻量化处理说起</a>
+      	</li>
+    	
+     	<li>
+      	  <a href="/blog/20151027/tong-ji-xiang-mu-zhong-tu-pian-shi-yong-qing-kuang/">统计项目中图片使用情况</a>
+      	</li>
+    	
+     	<li>
+      	  <a href="/blog/20151026/xiao-xi-zhuan-fa-he-nsuserdefaultsde-ling-huo-shi-yong/">消息转发和NSUserDefaults的灵活使用</a>
+      	</li>
+    	
+     	<li>
+      	  <a href="/blog/20151013/17-46-11-kai-fa-zhu-yi-shi-xiang-sui-shou-ji/">开发注意事项随手记</a>
+      	</li>
+    	
+     	<li>
+      	  <a href="/blog/20151013/15-38-44-readonlyde-shi-yong-zhi-zhao/">readonly的使用支招</a>
+      	</li>
+    	
+	</ul>
+</section><section>
+  <h1>关于</h1>
+  <p>Adorkable Dean : CocoaChina Swift&&应用区斑竹 iOS主架 Python主程 游戏设计师</p>
+  <p>新浪微博: <a href="http://weibo.com/234776985">@呆萌院长</a><br/>
+     Github: <a href="https://github.com/AdorkableDean">@AdorkableDean</a><br/>
+     Cocoachina: <a href="http://www.cocoachina.com/bbs/u.php?action=feed&uid=78198">@Adorkable</a>
+ </p>
+  </p>
+</section>
+
+  
+</aside>
+
+
+      	</div>
+    </div>
+  </div>
+  <footer id="footer">
+  	<div class="container">
+	Copyright &copy; 2015 - Adorkable Dean -
+  <span class="credit">Powered by <a rel="nofollow" href="http://octopress.org">Octopress</a> on <a rel="nofollow" href="http://pages.github.com/">GitHubPages</a>
+  </span>
+  - <span class="credit">Theme by <a rel="nofollow" href="http://pagecho.com">Cho</a></span>
+
+
+</div>
+
+  </footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'adorkabledean';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://adorkabledean.github.io/blog/20151109/method-swizzlinghe-fen-lei-de-miao-yong-cong-appdelegateqing-liang-hua-chu-li-shuo-qi/';
+        var disqus_url = 'http://adorkabledean.github.io/blog/20151109/method-swizzlinghe-fen-lei-de-miao-yong-cong-appdelegateqing-liang-hua-chu-li-shuo-qi/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
